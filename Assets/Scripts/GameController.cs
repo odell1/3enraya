@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
-using System.Collections.Generic; // Asegúrate de que esta línea esté presente para List
+using System.Collections.Generic;
 
 [System.Serializable]
 public class Player
@@ -19,7 +19,6 @@ public class PlayerColor
 
 public class GameController : MonoBehaviour
 {
-
     public Text[] buttonList;
     public GameObject gameOverPanel;
     public Text gameOverText;
@@ -35,6 +34,9 @@ public class GameController : MonoBehaviour
 
     private string playerSide;
     private int moveCount;
+    
+    // NUEVA VARIABLE PARA EL MODO IA VS IA
+    private bool aiVsAiMode = false;
 
     void Awake()
     {
@@ -70,7 +72,7 @@ public class GameController : MonoBehaviour
         if (CheckForWin())
         {
             GameOver(playerSide);
-            return; // Detener la ejecución si hay ganador
+            return; 
         }
         
         if (moveCount >= 9)
@@ -82,7 +84,7 @@ public class GameController : MonoBehaviour
         ChangeSides();
     }
 
-    // Método auxiliar para limpiar la lógica de EndTurn
+    //Método auxiliar para limpiar la lógica de EndTurn
     bool CheckForWin()
     {
         // Filas
@@ -104,7 +106,10 @@ public class GameController : MonoBehaviour
     
     void ChangeSides()
     {
-        playerSide = (playerSide == "X") ? "O" : "X";
+        //El cambio de lado es normal
+        playerSide = (playerSide == "X") ? "O" : "X"; 
+        
+        //Actualizar colores, el turno
         if (playerSide == "X")
         {
             SetPlayerColors(playerX, playerO);
@@ -112,19 +117,42 @@ public class GameController : MonoBehaviour
         else
         {
             SetPlayerColors(playerO, playerX);
-            // LA IA JUEGA AQUÍ
+        }
+        
+        //Verificar si la IA debe jugar AHORA
+        if (aiVsAiMode || playerSide == "O")
+        {
             StartCoroutine(AIMoveDelay()); 
         }
     }
 
-    // NUEVO MÉTODO PARA LA JUGADA DE LA IA
-    IEnumerator AIMoveDelay()
+    // Método para iniciar el modo IA vs IA
+
+public void StartAIVsAI()
     {
-        // Añade un pequeño retraso para una mejor experiencia de usuario
+        // Reiniciamos el juego, pero establecemos el modo de IA.
+        RestartGame(); 
+        
+        aiVsAiMode = true; 
+        SetBoardInteractable(false); // Bloqueamos la interacción del usuario
+        
+        // La IA 'X' comienza
+        playerSide = "X";
+        SetPlayerColors(playerX, playerO);
+        StartCoroutine(AIMoveDelay());
+    }
+
+    //MÉTODO MODIFICADO PARA LA JUGADA DE LA IA
+    IEnumerator AIMoveDelay()
+{
+        // Solo para evitar errores si la coroutine se llama accidentalmente.
+        if (!aiVsAiMode && playerSide == "X") yield break; 
+
+        // Añade un pequeño retraso
         yield return new WaitForSeconds(0.5f); 
         
-        // La IA calcula el mejor movimiento
-        int bestMoveIndex = aiPlayer.FindBestMove(buttonList);
+        // **CORRECCIÓN CLAVE:** Pasamos el símbolo del jugador actual (playerSide) a la IA.
+        int bestMoveIndex = aiPlayer.FindBestMove(buttonList, playerSide);
 
         // La IA realiza el movimiento
         buttonList[bestMoveIndex].text = GetPlayerSide();
@@ -156,7 +184,9 @@ public class GameController : MonoBehaviour
             SetGameOverText(winningPlayer + " gana!");
         }
         restartButton.SetActive(true);
-
+        
+        // Desactivamos el modo IA vs IA si termina el juego
+        aiVsAiMode = false;
     }
 
     void SetGameOverText(string value)
@@ -168,11 +198,14 @@ public class GameController : MonoBehaviour
 
     public void RestartGame()
     {
+        // IMPORTANTE: Al reiniciar, aseguramos que el modo IA vs IA esté apagado
+        aiVsAiMode = false; 
+        
         playerSide = "X";
         moveCount = 0;
         gameOverPanel.SetActive(false);
         SetPlayerColors(playerX, playerO);
-        SetBoardInteractable(true);
+        SetBoardInteractable(true); // Se reestablece la interacción para el juego Humano vs IA
 
         for (int i = 0; i < buttonList.Length; i++)
         {

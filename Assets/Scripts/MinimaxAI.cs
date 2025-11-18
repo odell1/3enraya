@@ -3,17 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.UI;
 
-public class MinimaxAI
+public partial class MinimaxAI
 {
     private const string AI_SIDE = "O"; // El lado de la IA
     private const string PLAYER_SIDE = "X"; // El lado del jugador humano
-
-    // Estructura para almacenar el movimiento y su puntuación
-    public class Move
-    {
-        public int index;
-        public int score;
-    }
 
     /// <summary>
     /// Función principal que la IA llama para obtener su mejor movimiento.
@@ -24,12 +17,23 @@ public class MinimaxAI
         return bestMove.index;
     }
 
+    public int FindBestMove(Text[] board, string playerSymbol) // Ahora pasamos el símbolo para que el jugador sea dinámico
+    {
+        // Inicializa Alpha y Beta
+        int alpha = int.MinValue;
+        int beta = int.MaxValue;
+        //El algoritmo Minimax calcula el mejor movimiento para 'playerSymbol'
+        //Move bestMove = Minimax(board, playerSymbol, playerSymbol); 
+        Move bestMove = Minimax(board, playerSymbol, playerSymbol, alpha, beta); //Poda alfa-beta
+        return bestMove.index;
+    }
+
     /// <summary>
     /// La implementación recursiva del algoritmo Minimax.
     /// </summary>
     private Move Minimax(Text[] currentBoard, string currentPlayer)
     {
-        // 1. Verificar el estado del juego (Función de Evaluación/Terminal)
+        //1. Verificar el estado del juego (Función de Evaluación/Terminal)
         string winner = CheckWinner(currentBoard);
         if (winner == AI_SIDE)
             return new Move { score = 10 }; // Victoria de la IA
@@ -64,7 +68,7 @@ public class MinimaxAI
                 }
             }
         }
-        else // MINIMIZADOR (PLAYER_SIDE)
+        else //MINIMIZADOR (PLAYER_SIDE)
         {
             bestMove.score = int.MaxValue;
             foreach (int move in availableMoves)
@@ -89,6 +93,167 @@ public class MinimaxAI
 
         return bestMove;
     }
+
+    //Uno contra otro
+    /// <summary>
+    /// Implementación recursiva del algoritmo Minimax para dos jugadores inteligentes.
+    /// </summary>
+private Move Minimax(Text[] currentBoard, string currentPlayer, string startingPlayer)
+    {
+        string opponentPlayer = (currentPlayer == "X") ? "O" : "X"; 
+        
+        // 1. Verificar el estado del juego (Función de Evaluación/Terminal)
+        string winner = CheckWinner(currentBoard);
+        
+        if (winner != "")
+        {
+            // La puntuación es relativa al 'startingPlayer'.
+            if (winner == startingPlayer)
+                return new Move { score = 10 }; // Victoria para el jugador inicial (MAX)
+            else
+                return new Move { score = -10 }; // Derrota para el jugador inicial (MIN)
+        }
+        if (GetAvailableMoves(currentBoard).Count == 0)
+            return new Move { score = 0 }; // Empate (Tablas)
+
+        // 2. Inicializar la mejor jugada
+        List<int> availableMoves = GetAvailableMoves(currentBoard);
+        Move bestMove = new Move();
+
+        // MAXIMIZADOR (Si el jugador actual es el que inició la búsqueda)
+        if (currentPlayer == startingPlayer) 
+        {
+            bestMove.score = int.MinValue;
+            foreach (int move in availableMoves)
+            {
+                currentBoard[move].text = currentPlayer;
+                
+                // Llamada recursiva (al oponente)
+                Move result = Minimax(currentBoard, opponentPlayer, startingPlayer); 
+                
+                currentBoard[move].text = "";
+                
+                // Actualizar la mejor puntuación (buscando el MÁXIMO)
+                if (result.score > bestMove.score)
+                {
+                    bestMove.score = result.score;
+                    bestMove.index = move;
+                }
+            }
+        }
+        // MINIMIZADOR (El oponente del jugador que inició la búsqueda)
+        else 
+        {
+            bestMove.score = int.MaxValue;
+            foreach (int move in availableMoves)
+            {
+                currentBoard[move].text = currentPlayer;
+                
+                // Llamada recursiva (al MAXIMIZADOR)
+                Move result = Minimax(currentBoard, opponentPlayer, startingPlayer);
+                
+                currentBoard[move].text = "";
+                
+                // Actualizar la mejor puntuación (buscando el MÍNIMO)
+                if (result.score < bestMove.score)
+                {
+                    bestMove.score = result.score;
+                    bestMove.index = move;
+                }
+            }
+        }
+
+        return bestMove;
+    }
+
+/// <summary>
+    /// Implementación recursiva del algoritmo Minimax con Poda Alpha-Beta.
+    /// </summary>
+    private Move Minimax(Text[] currentBoard, string currentPlayer, string startingPlayer, int alpha, int beta)
+    {
+        string opponentPlayer = (currentPlayer == "X") ? "O" : "X";
+
+        // 1. Verificación Terminal y Evaluación de Puntuación
+        string winner = CheckWinner(currentBoard);
+        
+        if (winner != "")
+        {
+            // La puntuación es relativa al 'startingPlayer'.
+            if (winner == startingPlayer)
+                return new Move { score = 10 }; // Victoria para el jugador inicial (MAX)
+            else
+                return new Move { score = -10 }; // Derrota para el jugador inicial (MIN)
+        }
+        if (GetAvailableMoves(currentBoard).Count == 0)
+            return new Move { score = 0 }; // Empate (Tablas)
+
+        // 2. Inicializar la mejor jugada
+        List<int> availableMoves = GetAvailableMoves(currentBoard);
+        Move bestMove = new Move();
+        bestMove.index = -1; // Inicializar índice
+
+        // MAXIMIZADOR (Si el jugador actual es el que inició la búsqueda)
+        if (currentPlayer == startingPlayer) 
+        {
+            bestMove.score = int.MinValue;
+            foreach (int move in availableMoves)
+            {
+                currentBoard[move].text = currentPlayer;
+                
+                // Llamada recursiva (al oponente)
+                Move result = Minimax(currentBoard, opponentPlayer, startingPlayer, alpha, beta); 
+                
+                currentBoard[move].text = "";
+                
+                // Actualizar la mejor puntuación
+                if (result.score > bestMove.score)
+                {
+                    bestMove.score = result.score;
+                    bestMove.index = move;
+                }
+                
+                // Poda Alpha: Actualizar Alpha y realizar el corte Beta.
+                alpha = Mathf.Max(alpha, bestMove.score);
+                if (beta <= alpha)
+                {
+                    break; // Poda: No se necesita explorar más esta rama.
+                }
+            }
+        }
+        // MINIMIZADOR (El oponente del jugador que inició la búsqueda)
+        else 
+        {
+            bestMove.score = int.MaxValue;
+            foreach (int move in availableMoves)
+            {
+                currentBoard[move].text = currentPlayer;
+                
+                // Llamada recursiva (al MAXIMIZADOR)
+                Move result = Minimax(currentBoard, opponentPlayer, startingPlayer, alpha, beta);
+                
+                currentBoard[move].text = "";
+                
+                // Actualizar la mejor puntuación
+                if (result.score < bestMove.score)
+                {
+                    bestMove.score = result.score;
+                    bestMove.index = move;
+                }
+
+                // Poda Beta: Actualizar Beta y realizar el corte Alpha.
+                beta = Mathf.Min(beta, bestMove.score);
+                if (beta <= alpha)
+                {
+                    break; // Poda: No se necesita explorar más esta rama.
+                }
+            }
+        }
+
+        return bestMove;
+    }
+
+
+
 
     /// <summary>
     /// Encuentra todos los espacios vacíos en el tablero.
